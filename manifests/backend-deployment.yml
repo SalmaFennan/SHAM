@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      imagePullSecrets:
+      - name: acr-secret 
+      containers:
+      - name: backend
+        image: mylmsacr.azurecr.io/backend:placeholder 
+        ports:
+        - containerPort: 3000
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: NODE_ENV
+        - name: PORT
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: PORT
+        - name: FRONTEND_URL
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: FRONTEND_URL
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: DB_HOST
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: DB_PASSWORD
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: DB_NAME
+        - name: DB_CONNECTION_LIMIT
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: DB_CONNECTION_LIMIT
+        - name: DB_QUEUE_LIMIT
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: DB_QUEUE_LIMIT
+        - name: ALLOWED_METHODS
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: ALLOWED_METHODS
+        - name: ALLOWED_HEADERS
+          valueFrom:
+            secretKeyRef:
+              name: backend-secrets
+              key: ALLOWED_HEADERS

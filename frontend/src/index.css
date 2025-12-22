@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+.modal {
+  z-index: 1000 !important;
+}
+.modal-box {
+  z-index: 1001 !important;
+}

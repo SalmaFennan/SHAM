@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      imagePullSecrets:
+      - name: acr-secret
+      containers:
+      - name: frontend
+        image: mylmsacr.azurecr.io/frontend:v4
+        ports:
+        - containerPort: 80  
+        resources:
+          requests:
+            memory: "128Mi"   
+            cpu: "100m"      
+          limits:
+            memory: "256Mi"   
+            cpu: "300m"      
+
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80         
+          initialDelaySeconds: 30  
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80         
+          initialDelaySeconds: 10  
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        env:
+        - name: VITE_API_BASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: frontend-secrets
+              key: VITE_API_BASE_URL
+        - name: VITE_API_TIMEOUT
+          valueFrom:
+            secretKeyRef:
+              name: frontend-secrets
+              key: VITE_API_TIMEOUT
+        - name: VITE_APP_ENV
+          valueFrom:
+            secretKeyRef:
+              name: frontend-secrets
+              key: VITE_APP_ENV
+        - name: VITE_APP_VERSION
+          valueFrom:
+            secretKeyRef:
+              name: frontend-secrets
+              key: VITE_APP_VERSION
+        - name: VITE_FEATURE_PAYMENTS_ENABLED
+          valueFrom:
+            secretKeyRef:
+              name: frontend-secrets
+              key: VITE_FEATURE_PAYMENTS_ENABLED
+        - name: VITE_FEATURE_REPORTS_ENABLED
+          valueFrom:
+            secretKeyRef:
+              name: frontend-secrets
+              key: VITE_FEATURE_REPORTS_ENABLED
