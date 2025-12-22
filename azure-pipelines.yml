@@ -18,7 +18,7 @@ stages:
   - job: BuildAndScan
     displayName: Build and Scan
     pool:
-      name: Default
+      name: sham-agent
       demands:
         - agent.name -equals sham-agent
     steps:
@@ -103,7 +103,7 @@ stages:
   - deployment: Deploy
     displayName: Deploy to AKS
     pool:
-      name: Default
+      name: sham-agent
       demands:
         - agent.name -equals sham-agent
     environment: 'myapp'
