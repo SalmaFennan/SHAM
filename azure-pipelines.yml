@@ -18,9 +18,7 @@ stages:
   - job: BuildAndScan
     displayName: Build and Scan
     pool:
-      name: Default
-      demands:
-        - agent.name -equals agent-sensipro
+      vmImage: 'windows-latest'  # <-- ici on utilise un agent Microsoft hébergé
     steps:
     # Build and push backend image
     - task: Docker@2
@@ -54,90 +52,32 @@ stages:
           $url = "https://github.com/aquasecurity/trivy/releases/download/v$(trivyVersion)/trivy_$(trivyVersion)_Windows-64bit.zip"
           $output = "trivy.zip"
           Invoke-WebRequest -Uri $url -OutFile $output -ErrorAction Stop
-          
-          # Verify ZIP integrity
-          $zipValid = $false
-          try {
-            Add-Type -AssemblyName System.IO.Compression.FileSystem
-            $zip = [System.IO.Compression.ZipFile]::OpenRead($output)
-            $zipValid = $true
-            $zip.Dispose()
-          } catch {
-            Write-Host "ZIP file is corrupted, deleting and retrying..."
-            Remove-Item $output -Force
-          }
-          
-          if (-not $zipValid) {
-            Write-Host "Retrying download..."
-            Invoke-WebRequest -Uri $url -OutFile $output -ErrorAction Stop
-            Add-Type -AssemblyName System.IO.Compression.FileSystem
-            $zip = [System.IO.Compression.ZipFile]::OpenRead($output)
-            $zip.Dispose()
-          }
-          
-          Expand-Archive -Path $output -DestinationPath ".\trivy" -ErrorAction Stop
-          if (Test-Path "C:\trivy.exe") { Remove-Item "C:\trivy.exe" -Force }
+          Expand-Archive -Path $output -DestinationPath ".\trivy"
           Move-Item -Path ".\trivy\trivy.exe" -Destination "C:\trivy.exe"
           Write-Host "Trivy installed successfully at C:\trivy.exe"
           C:\trivy.exe --version
 
-    # Scan backend image 
+    # Run Trivy scan for backend
     - task: PowerShell@2
       displayName: Run Trivy scan on backend image
       inputs:
         targetType: 'inline'
         script: |
-          Write-Host "Starting security scan for backend image..."
-          
-          # Scan SANS exit-code 1 pour ne pas faire échouer le pipeline
-          try {
-            C:\trivy.exe image --severity HIGH,CRITICAL --format json `
-              -o "$(Build.ArtifactStagingDirectory)\trivy-report-backend.json" `
-              --ignore-unfixed $(containerRegistry)/$(imageRepositoryBackend):$(tag)
-            Write-Host "Backend scan completed successfully"
-          } catch {
-            Write-Host "Scan completed with vulnerabilities found - this is normal"
-          }
-          
-          # Vérifier que le fichier rapport a été créé
-          if (Test-Path "$(Build.ArtifactStagingDirectory)\trivy-report-backend.json") {
-            Write-Host " Backend security report generated successfully"
-            $reportSize = (Get-Item "$(Build.ArtifactStagingDirectory)\trivy-report-backend.json").Length
-            Write-Host "Report size: $reportSize bytes"
-          } else {
-            Write-Host " Failed to generate backend security report"
-            # Créer un fichier vide pour éviter les erreurs de publication
-            New-Item -Path "$(Build.ArtifactStagingDirectory)\trivy-report-backend.json" -ItemType File -Value '[]'
-          }
+          Write-Host "Scanning backend image..."
+          C:\trivy.exe image --severity HIGH,CRITICAL --format json `
+            -o "$(Build.ArtifactStagingDirectory)\trivy-report-backend.json" `
+            --ignore-unfixed $(containerRegistry)/$(imageRepositoryBackend):$(tag)
 
-    # Scan frontend image 
+    # Run Trivy scan for frontend
     - task: PowerShell@2
       displayName: Run Trivy scan on frontend image
       inputs:
         targetType: 'inline'
         script: |
-          Write-Host "Starting security scan for frontend image..."
-          
-          # Scan SANS exit-code 1 pour ne pas faire échouer le pipeline
-          try {
-            C:\trivy.exe image --severity HIGH,CRITICAL --format json `
-              -o "$(Build.ArtifactStagingDirectory)\trivy-report-frontend.json" `
-              --ignore-unfixed $(containerRegistry)/$(imageRepositoryFrontend):$(tag)
-            Write-Host "Frontend scan completed successfully"
-          } catch {
-            Write-Host "Scan completed with vulnerabilities found - this is normal"
-          }
-          
-          # Vérifier que le fichier rapport a été créé
-          if (Test-Path "$(Build.ArtifactStagingDirectory)\trivy-report-frontend.json") {
-            Write-Host " Frontend security report generated successfully"
-            $reportSize = (Get-Item "$(Build.ArtifactStagingDirectory)\trivy-report-frontend.json").Length
-            Write-Host "Report size: $reportSize bytes"
-          } else {
-            Write-Host " Failed to generate frontend security report"
-            # Créer un fichier vide pour éviter les erreurs de publication
-            New-Item -Path "$(Build.ArtifactStagingDirectory)\trivy-report-frontend.json" -ItemType File -Value '[]'
-          }
+          Write-Host "Scanning frontend image..."
+          C:\trivy.exe image --severity HIGH,CRITICAL --format json `
+            -o "$(Build.ArtifactStagingDirectory)\trivy-report-frontend.json" `
+            --ignore-unfixed $(containerRegistry)/$(imageRepositoryFrontend):$(tag)
 
     - task: PublishPipelineArtifact@1
       displayName: Publish Trivy scan results
@@ -145,7 +85,6 @@ stages:
         targetPath: '$(Build.ArtifactStagingDirectory)'
         artifact: 'trivy-reports'
         publishLocation: 'pipeline'
-      condition: always()
 
     - task: PublishPipelineArtifact@1
       displayName: Publish Kubernetes manifests
@@ -162,9 +101,7 @@ stages:
   - deployment: Deploy
     displayName: Deploy to AKS
     pool:
-      name: Default
-      demands:
-        - agent.name -equals agent-sensipro
+      vmImage: 'windows-latest'  # <-- agent Microsoft hébergé
     environment: 'myapp'
     strategy:
       runOnce:
@@ -199,7 +136,6 @@ stages:
               manifests: |
                 $(Pipeline.Workspace)/manifests/secrets.yaml
 
-          # Create imagePullSecret for ACR
           - task: KubernetesManifest@0
             displayName: Create imagePullSecret
             inputs:
@@ -216,11 +152,8 @@ stages:
             inputs:
               targetType: 'inline'
               script: |
-                Write-Host "Waiting 15 seconds for secrets to be properly created..."
                 Start-Sleep -Seconds 15
-                Write-Host "Ready to deploy applications"
 
-          # Deploy manifests avec configuration optimisée
           - task: KubernetesManifest@0
             displayName: Deploy applications to Kubernetes cluster
             inputs:
@@ -235,7 +168,6 @@ stages:
                 $(containerRegistry)/$(imageRepositoryFrontend):$(tag)
               rolloutStatusTimeout: '900'
 
-          # Vérifier le statut final des déploiements
           - task: Kubernetes@1
             displayName: Check deployment status
             inputs:
