@@ -33,7 +33,7 @@ stages:
         tags: |
           $(tag)
 
-    # Build and push frontend image
+    # Build and push frontend image with --no-cache
     - task: Docker@2
       displayName: Build and push frontend image
       inputs:
@@ -43,6 +43,7 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
         tags: |
           $(tag)
+        arguments: '--no-cache --build-arg VITE_API_BASE_URL=http://backend-service --build-arg VITE_API_TIMEOUT=30000 --build-arg VITE_APP_ENV=production --build-arg VITE_APP_VERSION=$(tag) --build-arg VITE_FEATURE_PAYMENTS_ENABLED=true --build-arg VITE_FEATURE_REPORTS_ENABLED=true'
 
     # Install Trivy on the agent
     - task: PowerShell@2
@@ -55,7 +56,7 @@ stages:
           $output = "trivy.zip"
           Invoke-WebRequest -Uri $url -OutFile $output -ErrorAction Stop
           Expand-Archive -Path $output -DestinationPath ".\trivy"
-          Move-Item -Path ".\trivy\trivy.exe" -Destination "C:\trivy.exe"
+          Move-Item -Path ".\trivy\trivy.exe" -Destination "C:\trivy.exe" -Force
           Write-Host "Trivy installed successfully at C:\trivy.exe"
           C:\trivy.exe --version
 
