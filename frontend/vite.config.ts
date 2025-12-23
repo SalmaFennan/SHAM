@@ -10,14 +10,23 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/employes': {
-        target: 'http://localhost:3000', // Backend pour les employés
+        target: 'http://localhost:3000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/employes/, '/employes') // Garde le chemin intact
+        rewrite: (path) => path.replace(/^\/employes/, '/employes')
       },
       '/finances': {
-        target: 'http://localhost:3000', // Backend pour les finances
+        target: 'http://localhost:3000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/finances/, '') // Supprime le préfixe /finances
+        rewrite: (path) => path.replace(/^\/finances/, '')
+      }
+    }
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
       }
     }
   }

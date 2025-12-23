@@ -1,12 +1,12 @@
-# Use official Node.js image for building
-FROM node:18 AS build
+# Use official Node.js image for building - CHANGEZ 18 à 22
+FROM node:22 AS build
 
 WORKDIR /app
 
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-RUN npm install
+RUN npm ci
 
 # Copy the rest of the application
 COPY . .
