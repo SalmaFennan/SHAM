@@ -3,14 +3,12 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json ./
+# Copier UNIQUEMENT le frontend
+COPY frontend/package.json frontend/package-lock.json ./
 
-# Install dependencies
 RUN npm ci
 
-# Copy EVERYTHING except what's in .dockerignore
-COPY . .
+COPY frontend/ .
 
 # Build arguments
 ARG VITE_API_BASE_URL
