@@ -1,5 +1,5 @@
 # Use official Node.js image for building
-FROM node:18 AS buil
+FROM node:18 AS build
 WORKDIR /app
 # Copy package.json and package-lock.json
 COPY package*.json ./
